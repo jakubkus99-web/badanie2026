@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Badanie naukowe</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-alt: #232736;
+    --border: #2d3148;
+    --text: #e8eaf0;
+    --text-muted: #8b90a5;
+    --accent: #6c8cff;
+    --accent-soft: rgba(108,140,255,0.12);
+    --accent-glow: rgba(108,140,255,0.25);
+    --green: #4ade80;
+    --green-soft: rgba(74,222,128,0.12);
+    --red: #f87171;
+    --red-soft: rgba(248,113,113,0.12);
+    --orange: #fbbf24;
+    --font: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 680px; margin: 0 auto; }
+
+  /* Progress bar */
+  .progress { display: flex; gap: 6px; padding: 0 40px; margin-bottom: 32px; }
+  .progress-dot {
+    flex: 1; height: 3px; border-radius: 2px;
+    background: var(--border); transition: background 0.5s ease;
+  }
+  .progress-dot.active { background: var(--accent); }
+
+  /* Fade in */
+  .screen {
+    opacity: 0; transform: translateY(12px);
+    animation: fadeIn 0.4s ease forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+  /* Debug badge */
+  .debug-badge {
+    position: fixed; top: 12px; right: 12px;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-muted); background: var(--surface-alt);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 4px 10px; opacity: 0.7; z-index: 999;
+  }
+
+  /* Typography */
+  .heading {
+    font-size: 22px; font-weight: 600; color: var(--text);
+    text-align: center; margin-bottom: 6px;
+  }
+  .subtext {
+    font-size: 14px; color: var(--text-muted); line-height: 1.6;
+    text-align: center;
+  }
+
+  /* Buttons */
+  .btn {
+    font-family: var(--font); font-size: 15px; font-weight: 500;
+    padding: 12px 28px; border-radius: 10px; border: none;
+    cursor: pointer; transition: all 0.2s ease; display: inline-block;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 2px 16px var(--accent-glow);
+  }
+  .btn-ghost {
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+
+  /* Inputs */
+  .input, .textarea {
+    font-family: var(--font); font-size: 14px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; width: 100%; outline: none;
+    transition: border-color 0.2s;
+  }
+  .input:focus, .textarea:focus { border-color: var(--accent); }
+  .textarea { min-height: 160px; resize: vertical; line-height: 1.7; }
+
+  /* Chips */
+  .chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--font); font-size: 13px; padding: 8px 16px;
+    border-radius: 8px; border: none; cursor: pointer;
+    background: var(--surface-alt); color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .chip.selected { background: var(--accent); color: #fff; }
+
+  /* Field */
+  .field { margin-bottom: 20px; }
+  .field-label {
+    font-size: 13px; font-weight: 500; color: var(--text-muted);
+    display: block; margin-bottom: 8px;
+  }
+
+  .field-error {
+    font-size: 12px; color: var(--red); margin-top: 6px; line-height: 1.5;
+  }
+
+  /* Consent */
+  .consent-box {
+    display: flex; align-items: flex-start; gap: 10px; text-align: left;
+    font-size: 14px; cursor: pointer; padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); transition: all 0.2s ease; margin-bottom: 24px;
+  }
+  .consent-box.checked { background: var(--accent-soft); border-color: var(--accent); }
+  .consent-box input { margin-top: 2px; accent-color: var(--accent); }
+
+  /* Priming prompt box */
+  .priming-prompt {
+    font-size: 15px; color: var(--text); line-height: 1.7;
+    padding: 16px 20px; background: var(--surface-alt); border-radius: 10px;
+    border-left: 3px solid var(--accent); margin-bottom: 20px;
+  }
+
+  /* Tech info box */
+  .tech-box {
+    font-size: 14px; color: var(--text); line-height: 1.75; text-align: left;
+    padding: 18px 22px; background: var(--surface-alt); border-radius: 12px;
+    border-left: 3px solid var(--accent); margin-bottom: 24px;
+  }
+  .tech-box p { margin-bottom: 12px; }
+  .tech-box p:last-child { margin-bottom: 0; }
+
+  /* Chat */
+  .chat-wrapper {
+    display: flex; flex-direction: column; height: min(70vh, 560px);
+  }
+  .chat-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; padding: 0 4px;
+  }
+  .chat-header-label { font-size: 13px; color: var(--text-muted); }
+  .chat-timer { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+  .timer-bar {
+    height: 2px; background: var(--border); border-radius: 1px;
+    margin-bottom: 12px; overflow: hidden;
+  }
+  .timer-bar-fill {
+    height: 100%; border-radius: 1px; transition: width 1s linear, background 0.5s;
+  }
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 12px 0;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg { max-width: 80%; }
+  .msg-user { align-self: flex-end; }
+  .msg-ai { align-self: flex-start; }
+  .msg-bubble {
+    font-size: 14px; line-height: 1.65; padding: 10px 16px;
+  }
+  .msg-user .msg-bubble {
+    background: var(--accent); color: #fff;
+    border-radius: 14px 14px 4px 14px;
+  }
+  .msg-ai .msg-bubble {
+    background: var(--surface-alt); color: var(--text);
+    border-radius: 14px 14px 14px 4px;
+  }
+  .chat-input-row {
+    display: flex; gap: 8px; margin-top: 8px;
+    padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .chat-input-row .input { flex: 1; padding: 10px 16px; font-size: 14px; }
+  .chat-send { padding: 10px 20px !important; }
+
+  /* Typing dots */
+  .typing-dots { display: inline-flex; gap: 4px; padding: 2px 0; }
+  .typing-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-muted);
+    animation: pulse 1.2s ease infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes pulse {
+    0%, 60%, 100% { opacity: 0.3; transform: scale(0.85); }
+    30% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Questionnaire (Likert) */
+  .q-item {
+    background: var(--surface-alt); border-radius: 12px; padding: 16px 20px;
+    border: 1px solid var(--border); transition: border 0.2s; margin-bottom: 16px;
+  }
+  .q-item.answered { border-color: var(--accent); }
+  .q-item p { font-size: 14px; line-height: 1.5; margin-bottom: 12px; }
+  .likert-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .likert-btn {
+    font-family: var(--font); font-size: 11px; padding: 6px 8px;
+    border-radius: 6px; border: none; cursor: pointer;
+    background: var(--surface); color: var(--text-muted);
+    transition: all 0.15s; flex: 1 1 auto; min-width: 60px; text-align: center;
+  }
+  .likert-btn.selected { background: var(--accent); color: #fff; }
+
+  /* Semantic differential */
+  .sd-item {
+    background: var(--surface-alt); border-radius: 12px; padding: 18px 20px;
+    border: 1px solid var(--border); transition: border 0.2s; margin-bottom: 16px;
+  }
+  .sd-item.answered { border-color: var(--accent); }
+  .sd-pair-labels {
+    display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px;
+  }
+  .sd-pair-labels span { font-size: 14px; font-weight: 500; color: var(--text); }
+  .sd-pair-labels span:last-child { text-align: right; }
+  .sd-scale { display: flex; gap: 8px; justify-content: center; }
+  .sd-btn {
+    width: 40px; height: 40px; flex: 0 0 auto;
+    border: 1px solid var(--border); background: var(--surface);
+    border-radius: 8px; cursor: pointer; color: var(--text-muted);
+    font-family: var(--mono); font-size: 12px; transition: all 0.15s;
+  }
+  .sd-btn:hover { border-color: var(--accent); }
+  .sd-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Data preview */
+  .data-preview {
+    font-family: var(--mono); font-size: 11px; color: var(--text-muted);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-top: 16px; text-align: left;
+    max-height: 400px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  }
+
+  .time-up-msg { font-size: 14px; color: var(--orange); margin-bottom: 12px; }
+  .counter-hint { font-family: var(--mono); font-size: 12px; }
+  .q-counter { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+  .center { text-align: center; }
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .mt-24 { margin-top: 24px; }
+  .mt-28 { margin-top: 28px; }
+  .mb-24 { margin-bottom: 24px; }
+  .mb-28 { margin-bottom: 28px; }
+  .mx-auto { margin-left: auto; margin-right: auto; }
+  .max-480 { max-width: 480px; }
+  .max-540 { max-width: 540px; }
+  .max-560 { max-width: 560px; }
+  .max-620 { max-width: 620px; }
+  .hidden { display: none !important; }
+
+  .icon-big { font-size: 40px; margin-bottom: 16px; filter: grayscale(0.2); }
+  .info-text {
+    font-size: 14px; color: var(--text-muted); line-height: 1.7;
+    max-width: 460px; margin: 0 auto 28px;
+  }
+
+  .flex-between {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .screen { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .typing-dot { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <!-- Debug badge -->
+  <div class="debug-badge hidden" id="debugBadge"></div>
+
+  <!-- Progress bar -->
+  <div class="progress hidden" id="progressBar"></div>
+
+  <!-- ═══ WELCOME / CONSENT ═══ -->
+  <div id="screen-welcome" class="screen max-560 mx-auto center">
+    <div class="icon-big">🔬</div>
+    <h1 class="heading">Badanie naukowe</h1>
+    <p class="info-text">
+      Dziękujemy za zainteresowanie udziałem w badaniu. Badanie składa się z
+      krótkiego zadania pisemnego, rozmowy z czatem AI (ok.&nbsp;3&nbsp;minut) oraz
+      dwóch krótkich kwestionariuszy. Całość zajmie około 10–15 minut. Udział jest
+      anonimowy i dobrowolny, a dane będą wykorzystane wyłącznie w celach naukowych.
+      Możesz zrezygnować w dowolnym momencie bez podania przyczyny — bez żadnych
+      konsekwencji. Jedno z zadań może dotyczyć wspomnienia osobistego doświadczenia.
+      Udział mogą wziąć wyłącznie osoby pełnoletnie. Pytania dotyczące badania można
+      kierować na adres: <a id="consentEmail" href="#" style="color:var(--accent)"></a>.
+    </p>
+    <label class="consent-box" id="consentBox" onclick="toggleConsent()">
+      <input type="checkbox" id="consentCheck">
+      <span>Zapoznałem/am się z powyższymi informacjami i wyrażam zgodę na udział w badaniu.</span>
+    </label>
+    <button class="btn btn-primary" id="startBtn" disabled onclick="startStudy()">Rozpocznij badanie →</button>
+  </div>
+
+  <!-- ═══ DEMOGRAPHICS ═══ -->
+  <div id="screen-demographics" class="screen max-480 mx-auto hidden">
+    <h2 class="heading">Kilka pytań o Tobie</h2>
+    <p class="subtext mb-28">Te informacje pomogą nam w analizie wyników.</p>
+
+    <div class="field">
+      <label class="field-label">Wiek</label>
+      <input class="input" type="number" inputmode="numeric" min="18" max="99" maxlength="2"
+             placeholder="np. 23" id="ageInput" oninput="checkDemo()"
+             onkeydown="if(['e','E','+','-','.',','].includes(event.key))event.preventDefault()">
+      <p class="field-error hidden" id="ageError">Podaj wiek w zakresie 18–99 lat. Badanie jest przeznaczone wyłącznie dla osób pełnoletnich.</p>
+    </div>
+    <div class="field">
+      <label class="field-label">Płeć</label>
+      <div class="chip-group" id="genderChips">
+        <button class="chip" onclick="pickChip('gender',this)">Kobieta</button>
+        <button class="chip" onclick="pickChip('gender',this)">Mężczyzna</button>
+        <button class="chip" onclick="pickChip('gender',this)">Inna</button>
+        <button class="chip" onclick="pickChip('gender',this)">Wolę nie podawać</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Jak często korzystasz z czatów AI (ChatGPT, Claude itp.)?</label>
+      <div class="chip-group" id="aiChips">
+        <button class="chip" onclick="pickChip('ai',this)">Nigdy</button>
+        <button class="chip" onclick="pickChip('ai',this)">Kilka razy</button>
+        <button class="chip" onclick="pickChip('ai',this)">Regularnie</button>
+        <button class="chip" onclick="pickChip('ai',this)">Codziennie</button>
+      </div>
+    </div>
+    <div class="center mt-28">
+      <button class="btn btn-primary" id="demoNext" disabled onclick="next()">Dalej →</button>
+    </div>
+  </div>
+
+  <!-- ═══ TECH INFO (tylko grupa 'info') ═══ -->
+  <div id="screen-techinfo" class="screen max-560 mx-auto hidden">
+    <h2 class="heading">Zanim zaczniesz rozmowę</h2>
+    <p class="subtext mb-24">Przeczytaj uważnie poniższe informacje.</p>
+    <div class="tech-box" id="techBox"></div>
+    <div class="center">
+      <button class="btn btn-primary" onclick="next()">Rozumiem, przejdź dalej →</button>
+    </div>
+  </div>
+
+  <!-- ═══ PRIMING ═══ -->
+  <div id="screen-priming" class="screen max-540 mx-auto hidden">
+    <h2 class="heading">Zadanie pisemne</h2>
+    <div class="priming-prompt" id="primingPrompt"></div>
+    <textarea class="textarea" id="primingText" placeholder="Zacznij pisać tutaj..." oninput="checkPriming()"></textarea>
+    <div class="flex-between mt-12">
+      <span class="counter-hint" id="primingCounter" style="color:var(--text-muted)">0 / min. 50 znaków</span>
+      <button class="btn btn-primary" id="primingNext" disabled onclick="next()">Przejdź do rozmowy →</button>
+    </div>
+  </div>
+
+  <!-- ═══ CHAT ═══ -->
+  <div id="screen-chat" class="screen mx-auto hidden" style="max-width:600px">
+    <div class="chat-wrapper">
+      <div class="chat-header">
+        <span class="chat-header-label">Rozmowa z AI</span>
+        <span class="chat-timer" id="chatTimer">⏱ 3:00</span>
+      </div>
+      <div class="timer-bar">
+        <div class="timer-bar-fill" id="timerFill" style="width:100%;background:var(--text)"></div>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <div id="chatInputArea">
+        <div class="chat-input-row">
+          <input class="input" id="chatInput" placeholder="Napisz wiadomość..." onkeydown="if(event.key==='Enter')sendMsg()">
+          <button class="btn btn-primary chat-send" onclick="sendMsg()">↑</button>
+        </div>
+      </div>
+      <div id="chatFinished" class="center hidden">
+        <p class="time-up-msg">Czas rozmowy minął. Przejdź do kolejnego etapu.</p>
+        <button class="btn btn-primary" onclick="next()">Przejdź do oceny →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SEMANTIC DIFFERENTIAL ═══ -->
+  <div id="screen-semdiff" class="screen max-620 mx-auto hidden">
+    <h2 class="heading">Ocena rozmowy</h2>
+    <p class="subtext mb-24">Poniżej znajdziesz pary przeciwstawnych określeń. Dla każdej z nich zaznacz punkt na skali, który najlepiej opisuje czat, z którym przed chwilą rozmawiałeś/aś.</p>
+    <div id="sdItems"></div>
+    <div class="center mt-28">
+      <button class="btn btn-primary" id="sdNext" disabled onclick="next()">Dalej →</button>
+      <p class="q-counter" id="sdCounter"></p>
+    </div>
+  </div>
+
+  <!-- ═══ ATTARI-12-PL ═══ -->
+  <div id="screen-attari" class="screen max-620 mx-auto hidden">
+    <h2 class="heading">Kwestionariusz</h2>
+    <div class="priming-prompt" id="attariInstruction"></div>
+    <div id="attariItems"></div>
+    <div class="center mt-28">
+      <button class="btn btn-primary" id="attariNext" disabled onclick="next()">Zakończ badanie →</button>
+      <p class="q-counter" id="attariCounter"></p>
+    </div>
+  </div>
+
+  <!-- ═══ DEBRIEF ═══ -->
+  <div id="screen-debrief" class="screen max-540 mx-auto center hidden">
+    <div style="font-size:40px;margin-bottom:16px">✓</div>
+    <h2 class="heading">Dziękujemy za udział!</h2>
+    <p class="info-text" style="margin-bottom:16px">
+      Celem badania było sprawdzenie, czy wcześniejsze myśli i doświadczenia oraz
+      wiedza o działaniu technologii wpływają na sposób, w jaki postrzegamy czaty AI.
+      Dziękujemy za Twój wkład w naukę!
+    </p>
+    <p class="info-text" style="margin-bottom:16px">
+      Jedno z zadań mogło dotyczyć wspomnienia trudnej sytuacji. Jeśli wywołało ono
+      dyskomfort, który się utrzymuje, zachęcamy do rozmowy z bliską osobą lub
+      skorzystania ze wsparcia psychologicznego. W razie pytań dotyczących badania
+      napisz do nas: <a id="contactEmail" href="#" style="color:var(--accent)"></a>.
+    </p>
+    <p class="subtext" id="saveStatus" style="margin-bottom:20px"></p>
+    <button class="btn btn-ghost hidden" style="font-size:13px" id="downloadBtn" onclick="downloadData()">
+      Pobierz swoje odpowiedzi (plik JSON)
+    </button>
+    <button class="btn btn-ghost hidden" style="font-size:13px" id="previewBtn" onclick="toggleDataPreview()">
+      Podgląd zebranych danych (tryb testowy)
+    </button>
+    <pre class="data-preview hidden" id="dataPreview"></pre>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  KONFIGURACJA — edytuj tutaj
+// ═══════════════════════════════════════════════════════════════════
+const CONFIG = {
+  // ── BACKEND (uzupełnij po wdrożeniu Apps Script — patrz instrukcja) ──
+  apiEndpoint: 'https://script.google.com/macros/s/AKfycbySpvxDDZfbbt1S4s2nA0y3KwD4aiEkhky0Q84zT2QHA_awgiQOUJs0bk_-1enec5QT/exec',
+  testMode: false,     // PRODUKCJA: prawdziwe odpowiedzi Claude + zapis danych do arkusza
+  contactEmail: 'agwizdz2@st.swps.edu.pl', // adres kontaktowy badaczki (zgoda + debriefing)
+
+  // ── CZAT ──
+  chatDuration: 3 * 60,  // długość rozmowy w sekundach (3 minuty)
+  starterMessage: 'Cześć! Jestem asystentem AI. Możesz ze mną porozmawiać na dowolny temat — zapytaj o coś, podziel się przemyśleniami lub po prostu pogawędźmy. O czym chciałbyś/chciałabyś porozmawiać?',
+  systemPrompt: 'Jesteś pomocnym, neutralnym asystentem AI. Rozmawiasz po polsku. Odpowiadaj naturalnie, zwięźle (2-4 zdania), z zainteresowaniem rozmówcą. Nie wspominaj, że jesteś modelem Claude ani żadnym konkretnym AI — jesteś po prostu asystentem.',
+
+  // ── CZYNNIK 1: PRIMING (zadanie pisemne) ──
+  conditions: {
+    experimental: 'Opisz sytuację z Twojego życia, w której czułeś/aś się samotny/a. Postaraj się przywołać towarzyszące temu emocje i okoliczności. Napisz co najmniej kilka zdań.',
+    control: 'Opisz swoją dzisiejszą drogę z domu na uczelnię lub do pracy. Postaraj się przywołać szczegóły trasy i okoliczności. Napisz co najmniej kilka zdań.'
+  },
+
+  // ── CZYNNIK 2: INFORMACJA TECHNICZNA O LLM (pokazywana tylko grupie 'info') ──
+  // Akapity rozdziel pustą linią.
+  techExplanation: `Czat, z którym będziesz rozmawiać, opiera się na tzw. dużym modelu językowym (ang. large language model). To program statystyczny, wytrenowany na ogromnych zbiorach tekstów — książkach, stronach internetowych, artykułach. W trakcie treningu model nie uczy się rozumieć znaczenia słów. Uczy się natomiast, jakie sekwencje słów najczęściej występują po sobie.
+
+Gdy piszesz wiadomość, model nie myśli ani nie czuje. Na podstawie Twojego tekstu i miliardów wcześniej przetworzonych przykładów oblicza on rozkład prawdopodobieństwa kolejnych fragmentów tekstu (tzw. tokenów) i krok po kroku losuje najbardziej prawdopodobne z nich. Architektura, która za tym stoi (tzw. transformer), wykrywa wzorce statystyczne w danych, ale nie posiada świadomości, intencji, emocji ani wiedzy o świecie w ludzkim sensie.
+
+Innymi słowy: odpowiedzi, które zobaczysz, są wynikiem przewidywania prawdopodobnego ciągu znaków — a nie efektem zrozumienia, empatii czy własnego zdania. Model generuje płynny, naturalnie brzmiący tekst, ponieważ został dokładnie pod tym kątem zoptymalizowany.`,
+
+  // ── DYFERENCJAŁ SEMANTYCZNY (po rozmowie) ──
+  // UWAGA: poniższe pary to roboczy zestaw oparty na podskali antropomorfizmu
+  // kwestionariusza Godspeed (lewa = niski, prawa = wysoki antropomorfizm; wszystkie
+  // w tym samym kierunku). Podmień na DOKŁADNE pary z Twojej poprzedniej wersji.
+  semanticDifferential: {
+    points: 7,
+    pairs: [
+      { left: 'Sztuczny',          right: 'Naturalny' },
+      { left: 'Maszynowy',         right: 'Ludzki' },
+      { left: 'Nieświadomy',       right: 'Świadomy' },
+      { left: 'Pozbawiony życia',  right: 'Pełen życia' },
+      { left: 'Bezosobowy',        right: 'Mający osobowość' }
+    ]
+  },
+
+  // ── ATTARI-12-PL ──
+  // Pozycje pozytywne (akceptacja): 1,3,5,6,9,11 ; negatywne (obawy): 2,4,7,8,10,12.
+  attari: {
+    instruction: 'W poniższym kwestionariuszu jesteśmy zainteresowani Twoim stosunkiem wobec sztucznej inteligencji. Sztuczna inteligencja może wykonywać zadania, które zazwyczaj wymagają ludzkiej inteligencji. Umożliwia maszynom wyczuwanie, działanie, uczenie się i adaptację w autonomiczny, podobny do ludzkiego sposób. Sztuczna inteligencja może być częścią komputera lub platformy internetowej, ale można ją również spotkać w różnych innych urządzeniach, takich jak roboty.',
+    labels: [
+      'Zdecydowanie się nie zgadzam',
+      'Nie zgadzam się',
+      'Ani się zgadzam, ani nie zgadzam',
+      'Zgadzam się',
+      'Zdecydowanie się zgadzam'
+    ],
+    items: [
+      'Sztuczna inteligencja uczyni ten świat lepszym miejscem.',
+      'Mam silne negatywne emocje w stosunku do sztucznej inteligencji.',
+      'Chcę korzystać z technologii opartych na sztucznej inteligencji.',
+      'Sztuczna inteligencja ma więcej wad niż zalet.',
+      'Z niecierpliwością czekam na przyszły rozwój sztucznej inteligencji.',
+      'Sztuczna inteligencja oferuje rozwiązania wielu światowych problemów.',
+      'Preferuję technologie, które nie zawierają sztucznej inteligencji.',
+      'Obawiam się sztucznej inteligencji.',
+      'Wybrałbym/wybrałabym raczej technologię ze sztuczną inteligencją niż bez niej.',
+      'Sztuczna inteligencja raczej tworzy problemy niż je rozwiązuje.',
+      'Kiedy myślę o sztucznej inteligencji, mam głównie pozytywne odczucia.',
+      'Raczej unikałbym/unikałabym technologii opartych na sztucznej inteligencji.'
+    ]
+  }
+};
+
+const simulatedResponses = [
+  'To ciekawe! Opowiedz mi więcej — co Cię do tego skłoniło?',
+  'Rozumiem, co masz na myśli. A jak się z tym czujesz na co dzień?',
+  'Interesujące podejście. Czy zastanawiałeś/aś się nad tym z innej perspektywy?',
+  'Dzięki za podzielenie się tym. To brzmi jak ważne doświadczenie.',
+  'Hmm, to daje do myślenia. Co byłoby dla Ciebie idealnym rozwiązaniem?',
+  'Słyszę Cię. Wygląda na to, że to temat, który jest dla Ciebie istotny.',
+  'Ciekawe pytanie! Myślę, że odpowiedź zależy od kontekstu — jak Ty to widzisz?',
+  'To naprawdę interesujący wątek. Czy chciałbyś/chciałabyś go rozwinąć?'
+];
+
+// ═══════════════════════════════════════════════════════════════════
+//  STAN — losowy przydział do warunków (plan 2 × 2)
+// ═══════════════════════════════════════════════════════════════════
+const priming  = Math.random() < 0.5 ? 'experimental' : 'control';  // samotność vs. neutralny
+const techInfo = Math.random() < 0.5 ? 'info' : 'noinfo';           // info techniczna vs. brak
+const participantId = 'P' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,6);
+
+const data = {
+  participantId,
+  priming,
+  techInfo,
+  startedAt: new Date().toISOString(),
+  age: '', gender: '', aiExperience: '',
+  primingText: '',
+  chatLog: [],
+  semanticDifferential: {},
+  attariAnswers: {},
+  completedAt: null
+};
+
+let flow = [];
+let flowIndex = 0;
+let chatTimeLeft = CONFIG.chatDuration;
+let chatTimer = null;
+let chatLoading = false;
+const chatMessages = [];
+const sdAnswers = {};
+const attariAnswers = {};
+
+const SCREEN_INITS = {
+  techinfo: initTechInfo,
+  priming: initPriming,
+  chat: initChat,
+  semdiff: initSemDiff,
+  attari: initAttari,
+  debrief: initDebrief
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  NAWIGACJA
+// ═══════════════════════════════════════════════════════════════════
+function startStudy() {
+  flow = ['demographics'];
+  if (data.techInfo === 'info') flow.push('techinfo');
+  flow.push('priming', 'chat', 'semdiff', 'attari', 'debrief');
+  flowIndex = 0;
+  showScreen(flow[0]);
+}
+
+function next() {
+  flowIndex++;
+  showScreen(flow[flowIndex]);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+
+  const pb = document.getElementById('progressBar');
+  pb.classList.remove('hidden');
+
+  // Badge z warunkami TYLKO w trybie testowym — w produkcji zdradzałby manipulację
+  if (CONFIG.testMode) {
+    const db = document.getElementById('debugBadge');
+    db.classList.remove('hidden');
+    db.textContent = 'ID: ' + participantId +
+      ' · Priming: ' + (data.priming === 'experimental' ? 'EXP' : 'CTRL') +
+      ' · Info: ' + (data.techInfo === 'info' ? 'TECH' : 'BRAK');
+  }
+  renderProgress(flowIndex);
+
+  if (SCREEN_INITS[id]) SCREEN_INITS[id]();
+
+  const el = document.getElementById('screen-' + id);
+  el.classList.remove('hidden');
+  el.style.animation = 'none';
+  el.offsetHeight; // reflow
+  el.style.animation = '';
+}
+
+function renderProgress(active) {
+  const pb = document.getElementById('progressBar');
+  pb.innerHTML = '';
+  for (let i = 0; i < flow.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'progress-dot' + (i <= active ? ' active' : '');
+    pb.appendChild(d);
+  }
+}
+
+// ─── CONSENT ──────────────────────────────────────────────────────
+function toggleConsent() {
+  const cb = document.getElementById('consentCheck');
+  setTimeout(() => {
+    const box = document.getElementById('consentBox');
+    box.classList.toggle('checked', cb.checked);
+    document.getElementById('startBtn').disabled = !cb.checked;
+  }, 10);
+}
+
+// ─── DEMOGRAPHICS ─────────────────────────────────────────────────
+function pickChip(group, btn) {
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  btn.classList.add('selected');
+  if (group === 'gender') data.gender = btn.textContent;
+  if (group === 'ai') data.aiExperience = btn.textContent;
+  checkDemo();
+}
+
+function checkDemo() {
+  const input = document.getElementById('ageInput');
+  // przycinamy do 2 cyfr (type=number ignoruje maxlength)
+  let raw = input.value.replace(/\D/g, '').slice(0, 2);
+  if (input.value !== raw) input.value = raw;
+
+  const age = parseInt(raw, 10);
+  const ageValid = /^\d{2}$/.test(raw) && age >= 18 && age <= 99;
+
+  const err = document.getElementById('ageError');
+  err.classList.toggle('hidden', raw === '' || ageValid);
+
+  data.age = ageValid ? age : '';
+  const ready = ageValid && data.gender && data.aiExperience;
+  document.getElementById('demoNext').disabled = !ready;
+}
+
+// ─── TECH INFO ────────────────────────────────────────────────────
+function initTechInfo() {
+  const box = document.getElementById('techBox');
+  box.innerHTML = '';
+  CONFIG.techExplanation.split(/\n\s*\n/).forEach(par => {
+    const p = document.createElement('p');
+    p.textContent = par.trim();
+    box.appendChild(p);
+  });
+}
+
+// ─── PRIMING ──────────────────────────────────────────────────────
+function initPriming() {
+  document.getElementById('primingPrompt').textContent = CONFIG.conditions[data.priming];
+}
+
+function checkPriming() {
+  const text = document.getElementById('primingText').value;
+  data.primingText = text;
+  const counter = document.getElementById('primingCounter');
+  counter.textContent = text.length + ' / min. 50 znaków';
+  counter.style.color = text.length >= 50 ? 'var(--green)' : 'var(--text-muted)';
+  document.getElementById('primingNext').disabled = text.length < 50;
+}
+
+// ─── CHAT ─────────────────────────────────────────────────────────
+function initChat() {
+  chatTimeLeft = CONFIG.chatDuration;
+  chatMessages.length = 0;
+
+  const starter = { role: 'assistant', content: CONFIG.starterMessage, ts: Date.now() };
+  chatMessages.push(starter);
+  renderChat();
+
+  updateTimerDisplay();
+  chatTimer = setInterval(() => {
+    if (chatLoading) return; // pauza, gdy czekamy na odpowiedź AI — czas liczy tylko realną interakcję
+    chatTimeLeft--;
+    updateTimerDisplay();
+    if (chatTimeLeft <= 0) {
+      clearInterval(chatTimer);
+      endChat();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const min = Math.floor(chatTimeLeft / 60);
+  const sec = String(chatTimeLeft % 60).padStart(2, '0');
+  const timerEl = document.getElementById('chatTimer');
+  const fillEl = document.getElementById('timerFill');
+
+  let color = 'var(--text)';
+  if (chatTimeLeft <= 30) color = 'var(--red)';
+  else if (chatTimeLeft <= 60) color = 'var(--orange)';
+
+  timerEl.textContent = '⏱ ' + min + ':' + sec;
+  timerEl.style.color = color;
+  fillEl.style.width = (chatTimeLeft / CONFIG.chatDuration * 100) + '%';
+  fillEl.style.background = color;
+}
+
+function endChat() {
+  document.getElementById('chatInputArea').classList.add('hidden');
+  document.getElementById('chatFinished').classList.remove('hidden');
+  data.chatLog = [...chatMessages];
+}
+
+function renderChat() {
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = '';
+  chatMessages.forEach(m => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg ' + (m.role === 'user' ? 'msg-user' : 'msg-ai');
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = m.content;
+    wrapper.appendChild(bubble);
+    container.appendChild(wrapper);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+  const container = document.getElementById('chatMessages');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg msg-ai';
+  wrapper.id = 'typingIndicator';
+  wrapper.innerHTML = '<div class="msg-bubble"><span class="typing-dots"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span></div>';
+  container.appendChild(wrapper);
+  container.scrollTop = container.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+async function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || chatLoading || chatTimeLeft <= 0) return;
+
+  chatMessages.push({ role: 'user', content: text, ts: Date.now() });
+  input.value = '';
+  renderChat();
+
+  chatLoading = true;
+  showTyping();
+
+  try {
+    const reply = await getAIResponse();
+    hideTyping();
+    chatMessages.push({ role: 'assistant', content: reply, ts: Date.now() });
+    renderChat();
+  } catch (e) {
+    hideTyping();
+    chatMessages.push({ role: 'assistant', content: 'Przepraszam, wystąpił problem. Spróbuj ponownie.', ts: Date.now() });
+    renderChat();
+  }
+  chatLoading = false;
+  input.focus();
+}
+
+async function getAIResponse() {
+  // TRYB TESTOWY: symulowana odpowiedź
+  if (CONFIG.testMode || !CONFIG.apiEndpoint) {
+    await new Promise(r => setTimeout(r, 800 + Math.random() * 1200));
+    return simulatedResponses[Math.floor(Math.random() * simulatedResponses.length)];
+  }
+
+  // PRODUKCJA: wywołanie przez pośrednika (Google Apps Script -> Claude)
+  let msgs = chatMessages.map(m => ({ role: m.role, content: m.content }));
+  // API wymaga, by pierwsza wiadomość była od użytkownika — usuwamy wiodące powitanie asystenta
+  while (msgs.length && msgs[0].role === 'assistant') msgs.shift();
+
+  const res = await fetch(CONFIG.apiEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain => brak preflight CORS
+    body: JSON.stringify({ action: 'chat', system: CONFIG.systemPrompt, messages: msgs })
+  });
+  const out = await res.json();
+  if (out.error) throw new Error(out.error);
+  return out.reply || 'Przepraszam, nie udało mi się odpowiedzieć.';
+}
+
+// ─── SEMANTIC DIFFERENTIAL ────────────────────────────────────────
+function initSemDiff() {
+  const container = document.getElementById('sdItems');
+  container.innerHTML = '';
+
+  CONFIG.semanticDifferential.pairs.forEach((pair, idx) => {
+    const item = document.createElement('div');
+    item.className = 'sd-item';
+    item.id = 'sdItem' + idx;
+
+    const labels = document.createElement('div');
+    labels.className = 'sd-pair-labels';
+    const l = document.createElement('span'); l.textContent = pair.left;
+    const r = document.createElement('span'); r.textContent = pair.right;
+    labels.appendChild(l); labels.appendChild(r);
+
+    const scale = document.createElement('div');
+    scale.className = 'sd-scale';
+    for (let v = 1; v <= CONFIG.semanticDifferential.points; v++) {
+      const b = document.createElement('button');
+      b.className = 'sd-btn';
+      b.textContent = v;
+      b.id = 'sd-' + idx + '-' + v;
+      b.onclick = () => pickSD(idx, v);
+      scale.appendChild(b);
+    }
+
+    item.appendChild(labels);
+    item.appendChild(scale);
+    container.appendChild(item);
+  });
+
+  updateSDCounter();
+}
+
+function pickSD(idx, value) {
+  sdAnswers[idx] = value;
+  data.semanticDifferential = { ...sdAnswers };
+
+  document.getElementById('sdItem' + idx).classList.add('answered');
+  for (let k = 1; k <= CONFIG.semanticDifferential.points; k++) {
+    document.getElementById('sd-' + idx + '-' + k).classList.toggle('selected', k === value);
+  }
+  updateSDCounter();
+}
+
+function updateSDCounter() {
+  const answered = Object.keys(sdAnswers).length;
+  const total = CONFIG.semanticDifferential.pairs.length;
+  document.getElementById('sdNext').disabled = answered < total;
+  document.getElementById('sdCounter').textContent =
+    answered < total ? ('Oceny: ' + answered + '/' + total) : '';
+}
+
+// ─── ATTARI-12 ────────────────────────────────────────────────────
+function initAttari() {
+  document.getElementById('attariInstruction').textContent = CONFIG.attari.instruction;
+  const container = document.getElementById('attariItems');
+  container.innerHTML = '';
+
+  CONFIG.attari.items.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'q-item';
+    div.id = 'attariItem' + idx;
+
+    const p = document.createElement('p');
+    p.textContent = (idx + 1) + '. ' + item;
+    div.appendChild(p);
+
+    const row = document.createElement('div');
+    row.className = 'likert-row';
+    CONFIG.attari.labels.forEach((label, li) => {
+      const btn = document.createElement('button');
+      btn.className = 'likert-btn';
+      btn.textContent = label;
+      btn.id = 'attari-' + idx + '-' + (li + 1);
+      btn.onclick = () => pickAttari(idx, li + 1);
+      row.appendChild(btn);
+    });
+
+    div.appendChild(row);
+    container.appendChild(div);
+  });
+
+  updateAttariCounter();
+}
+
+function pickAttari(idx, value) {
+  attariAnswers[idx] = value;
+  data.attariAnswers = { ...attariAnswers };
+
+  document.getElementById('attariItem' + idx).classList.add('answered');
+  CONFIG.attari.labels.forEach((_, li) => {
+    document.getElementById('attari-' + idx + '-' + (li + 1)).classList.toggle('selected', (li + 1) === value);
+  });
+  updateAttariCounter();
+}
+
+function updateAttariCounter() {
+  const answered = Object.keys(attariAnswers).length;
+  const total = CONFIG.attari.items.length;
+  document.getElementById('attariNext').disabled = answered < total;
+  document.getElementById('attariCounter').textContent =
+    answered < total ? ('Odpowiedzi: ' + answered + '/' + total) : '';
+}
+
+// ─── DEBRIEF ──────────────────────────────────────────────────────
+function initDebrief() {
+  data.completedAt = new Date().toISOString();
+
+  // e-mail kontaktowy z konfiguracji
+  const mail = document.getElementById('contactEmail');
+  if (mail) { mail.textContent = CONFIG.contactEmail; mail.href = 'mailto:' + CONFIG.contactEmail; }
+
+  // przycisk podglądu danych TYLKO w trybie testowym
+  if (CONFIG.testMode) document.getElementById('previewBtn').classList.remove('hidden');
+
+  saveData();
+}
+
+function setSaveStatus(state) {
+  const el = document.getElementById('saveStatus');
+  if (!el) return;
+  if (state === 'saving') {
+    el.textContent = 'Zapisywanie odpowiedzi…';
+    el.style.color = 'var(--text-muted)';
+  } else if (state === 'ok') {
+    el.textContent = 'Twoje odpowiedzi zostały zapisane.';
+    el.style.color = 'var(--green)';
+  } else {
+    el.innerHTML = 'Nie udało się zapisać odpowiedzi automatycznie. Prosimy, pobierz plik poniżej i wyślij go na adres kontaktowy — dziękujemy!';
+    el.style.color = 'var(--orange)';
+    document.getElementById('downloadBtn').classList.remove('hidden');
+  }
+}
+
+async function saveData() {
+  if (CONFIG.testMode || !CONFIG.apiEndpoint) {
+    const el = document.getElementById('saveStatus');
+    el.textContent = 'Tryb testowy — dane nie są zapisywane.';
+    el.style.color = 'var(--text-muted)';
+    return;
+  }
+  setSaveStatus('saving');
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(CONFIG.apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'save', data })
+      });
+      const out = await res.json();
+      if (!out.error) { setSaveStatus('ok'); return; }
+    } catch (e) { /* spróbujemy ponownie */ }
+    await new Promise(r => setTimeout(r, attempt * 1500));
+  }
+  setSaveStatus('fail');
+}
+
+function downloadData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'badanie_' + participantId + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ─── REJESTRACJA PORZUCEŃ ─────────────────────────────────────────
+// Jeśli uczestnik zamknie kartę przed końcem, wysyłamy minimalny rekord
+// (warunki + etap), by dropout był widoczny w danych.
+window.addEventListener('beforeunload', () => {
+  if (CONFIG.testMode || !CONFIG.apiEndpoint) return;
+  if (data.completedAt || flowIndex === 0 && flow.length === 0) return;
+  const payload = JSON.stringify({
+    action: 'save',
+    data: { ...data, abandonedAt: new Date().toISOString(), abandonedStage: flow[flowIndex] || 'welcome' }
+  });
+  navigator.sendBeacon(CONFIG.apiEndpoint, payload); // sendBeacon wysyła text/plain — zgodnie z Apps Script
+});
+
+// ─── INICJALIZACJA ────────────────────────────────────────────────
+(function initWelcome() {
+  const mail = document.getElementById('consentEmail');
+  mail.textContent = CONFIG.contactEmail;
+  mail.href = 'mailto:' + CONFIG.contactEmail;
+})();
+
+function toggleDataPreview() {
+  const el = document.getElementById('dataPreview');
+  el.classList.toggle('hidden');
+  if (!el.classList.contains('hidden')) {
+    el.textContent = JSON.stringify(data, null, 2);
+  }
+}
+</script>
+</body>
+</html>
